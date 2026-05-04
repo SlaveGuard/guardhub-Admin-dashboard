@@ -2,12 +2,21 @@ import { adminApiClient } from './client';
 import type { AdminUser } from '../store/adminAuthStore';
 import type {
   AccountDetail,
+  AccountAuditItem,
+  AccountDevicesResult,
+  AccountPairingHistoryItem,
   AccountSummary,
+  AcceptInvitePayload,
+  AcceptInviteResult,
   ActivityItem,
   AdminAccountsParams,
   AdminFamiliesParams,
+  AdminInviteUserPayload,
   AdminLoginResponse,
+  AdminMutationResult,
   AdminSubscriptionsParams,
+  AdminUpdateRolesPayload,
+  AdminUserAuditItem,
   AdminUserSummary,
   AlertItem,
   AuditItem,
@@ -17,8 +26,11 @@ import type {
   OverviewData,
   PackageSummary,
   PaginatedResult,
+  PairingCodeLookupResult,
+  PairingFailureItem,
   SubscriptionDetail,
   SubscriptionSummary,
+  SupportNotesResult,
 } from '../types/admin';
 
 function cleanParams<T extends Record<string, string | number | boolean | undefined>>(params?: T) {
@@ -115,5 +127,85 @@ export async function getAdminAudit(params: OversightParams) {
 
 export async function listAdminUsers() {
   const { data } = await adminApiClient.get<AdminUserSummary[]>('/admin/admin-users');
+  return data;
+}
+
+export async function disableAccount(accountId: string, reason: string) {
+  const { data } = await adminApiClient.post<AdminMutationResult>(`/admin/accounts/${accountId}/disable`, { reason });
+  return data;
+}
+
+export async function enableAccount(accountId: string, reason: string) {
+  const { data } = await adminApiClient.post<AdminMutationResult>(`/admin/accounts/${accountId}/enable`, { reason });
+  return data;
+}
+
+export async function forcePasswordReset(accountId: string, reason: string) {
+  const { data } = await adminApiClient.post<AdminMutationResult>(`/admin/accounts/${accountId}/force-password-reset`, { reason });
+  return data;
+}
+
+export async function resendVerification(accountId: string, reason: string) {
+  const { data } = await adminApiClient.post<AdminMutationResult>(`/admin/accounts/${accountId}/resend-verification`, { reason });
+  return data;
+}
+
+export async function getAccountAudit(accountId: string) {
+  const { data } = await adminApiClient.get<AccountAuditItem[]>(`/admin/accounts/${accountId}/audit`);
+  return data;
+}
+
+export async function updateFamilySupportNotes(familyId: string, notes: string | null, reason: string) {
+  const { data } = await adminApiClient.patch<SupportNotesResult>(`/admin/families/${familyId}/support-notes`, { notes, reason });
+  return data;
+}
+
+export async function getRecentPairingFailures() {
+  const { data } = await adminApiClient.get<PairingFailureItem[]>('/admin/support/pairing/recent-failures');
+  return data;
+}
+
+export async function lookupPairingCode(code: string) {
+  const { data } = await adminApiClient.get<PairingCodeLookupResult>('/admin/support/pairing/code-lookup', { params: { code } });
+  return data;
+}
+
+export async function getAccountDevices(accountId: string) {
+  const { data } = await adminApiClient.get<AccountDevicesResult>(`/admin/support/accounts/${accountId}/devices`);
+  return data;
+}
+
+export async function getAccountPairingHistory(accountId: string) {
+  const { data } = await adminApiClient.get<AccountPairingHistoryItem[]>(`/admin/support/accounts/${accountId}/pairing`);
+  return data;
+}
+
+export async function inviteAdminUser(payload: AdminInviteUserPayload) {
+  const { data } = await adminApiClient.post<AdminUserSummary>('/admin/admin-users/invite', payload);
+  return data;
+}
+
+export async function updateAdminUserRoles(adminUserId: string, payload: AdminUpdateRolesPayload) {
+  const { data } = await adminApiClient.patch<AdminUserSummary>(`/admin/admin-users/${adminUserId}/roles`, payload);
+  return data;
+}
+
+export async function disableAdminUser(adminUserId: string, reason: string) {
+  const { data } = await adminApiClient.post<AdminMutationResult>(`/admin/admin-users/${adminUserId}/disable`, { reason });
+  return data;
+}
+
+export async function enableAdminUser(adminUserId: string, reason: string) {
+  const { data } = await adminApiClient.post<AdminMutationResult>(`/admin/admin-users/${adminUserId}/enable`, { reason });
+  return data;
+}
+
+export async function getAdminUserAudit(adminUserId: string) {
+  const { data } = await adminApiClient.get<AdminUserAuditItem[]>(`/admin/admin-users/${adminUserId}/audit`);
+  return data;
+}
+
+export async function acceptInvite(payload: AcceptInvitePayload) {
+  const { data } = await adminApiClient.post<AcceptInviteResult>('/admin/auth/accept-invite', payload);
   return data;
 }

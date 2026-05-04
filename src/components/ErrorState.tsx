@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { AlertTriangle } from 'lucide-react';
 
 type ErrorStateProps = { message?: string; onRetry?: () => void };

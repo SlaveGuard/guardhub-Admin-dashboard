@@ -1,6 +1,5 @@
 import { ShieldAlert } from 'lucide-react';
 import { useState } from 'react';
-import type { FormEvent } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { adminLogin } from '../../api/admin';
@@ -15,8 +14,7 @@ export function AdminLoginScreen() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleSubmit() {
     setIsLoading(true);
     try {
       const result = await adminLogin(email, password);
@@ -41,14 +39,36 @@ export function AdminLoginScreen() {
           <p className="mt-2 text-sm text-slate-400">Operator Access - Restricted</p>
         </div>
         <div className="my-6 border-t border-white/10" />
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <input className="glass-input" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email" autoComplete="email" required />
-          <input className="glass-input" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password" autoComplete="current-password" required />
-          <button className="btn-primary flex w-full items-center justify-center gap-2 py-3" type="submit" disabled={isLoading}>
+        <div className="space-y-4">
+          <input
+            className="glass-input"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') void handleSubmit();
+            }}
+            placeholder="Email"
+            autoComplete="email"
+            required
+          />
+          <input
+            className="glass-input"
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') void handleSubmit();
+            }}
+            placeholder="Password"
+            autoComplete="current-password"
+            required
+          />
+          <button className="btn-primary flex w-full items-center justify-center gap-2 py-3" type="button" disabled={isLoading} onClick={() => void handleSubmit()}>
             {isLoading ? <LoadingSpinner size="sm" /> : null}
             Sign In
           </button>
-        </form>
+        </div>
         <p className="mt-6 text-center text-xs leading-5 text-slate-500">
           This portal is for GuardHub operators only. Unauthorized access is monitored and audited.
         </p>

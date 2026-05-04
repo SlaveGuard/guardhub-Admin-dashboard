@@ -1,4 +1,4 @@
-import { Activity, ClipboardList, CreditCard, Home, LayoutDashboard, LogOut, Package, ShieldAlert, ShieldCheck, Siren, Users } from 'lucide-react';
+import { Activity, ClipboardList, CreditCard, Home, LayoutDashboard, LogOut, Package, ShieldAlert, ShieldCheck, Siren, Users, Wrench } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -12,6 +12,7 @@ const sections: { label: string; items: NavItem[] }[] = [
   { label: 'Platform', items: [{ label: 'Overview', to: '/admin/overview', icon: LayoutDashboard }] },
   { label: 'Data', items: [{ label: 'Accounts', to: '/admin/accounts', icon: Users }, { label: 'Families', to: '/admin/families', icon: Home }, { label: 'Packages', to: '/admin/packages', icon: Package }, { label: 'Subscriptions', to: '/admin/subscriptions', icon: CreditCard }] },
   { label: 'Oversight', items: [{ label: 'Alerts', to: '/admin/alerts', icon: Siren }, { label: 'Activity', to: '/admin/activity', icon: Activity }, { label: 'Audit', to: '/admin/audit', icon: ClipboardList }] },
+  { label: 'Support', items: [{ label: 'Pairing Workspace', to: '/admin/support', icon: Wrench }] },
   { label: 'System', items: [{ label: 'Admin Users', to: '/admin/admin-users', icon: ShieldCheck }] },
 ];
 

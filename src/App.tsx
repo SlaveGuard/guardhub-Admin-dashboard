@@ -2,6 +2,7 @@ import { Toaster } from 'react-hot-toast';
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { AdminLayout } from './components/AdminLayout';
 import { useAdminAuthStore } from './store/adminAuthStore';
+import { AcceptInviteScreen } from './screens/auth/AcceptInviteScreen';
 import { AdminLoginScreen } from './screens/auth/AdminLoginScreen';
 import { AccountDetailScreen } from './screens/admin/AccountDetailScreen';
 import { AccountsScreen } from './screens/admin/AccountsScreen';
@@ -13,6 +14,7 @@ import { FamiliesScreen } from './screens/admin/FamiliesScreen';
 import { FamilyDetailScreen } from './screens/admin/FamilyDetailScreen';
 import { OverviewScreen } from './screens/admin/OverviewScreen';
 import { PackagesScreen } from './screens/admin/PackagesScreen';
+import { SupportScreen } from './screens/admin/SupportScreen';
 import { SubscriptionDetailScreen } from './screens/admin/SubscriptionDetailScreen';
 import { SubscriptionsScreen } from './screens/admin/SubscriptionsScreen';
 
@@ -32,6 +34,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Navigate replace to="/admin/overview" />} />
+        <Route path="/accept-invite" element={<AcceptInviteScreen />} />
         <Route element={<PublicRoute />}>
           <Route path="/login" element={<AdminLoginScreen />} />
         </Route>
@@ -49,6 +52,7 @@ export default function App() {
             <Route path="alerts" element={<AlertsScreen />} />
             <Route path="activity" element={<ActivityScreen />} />
             <Route path="audit" element={<AuditScreen />} />
+            <Route path="support" element={<SupportScreen />} />
             <Route path="admin-users" element={<AdminUsersScreen />} />
           </Route>
         </Route>

@@ -22,7 +22,16 @@ interface AdminAuthState {
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
   super_admin: ['admin:*'],
-  support_admin: ['admin:accounts:read', 'admin:families:read', 'admin:alerts:read', 'admin:activity:read', 'admin:audit:read', 'admin:support:read'],
+  support_admin: [
+    'admin:accounts:read',
+    'admin:accounts:write',
+    'admin:families:read',
+    'admin:families:write',
+    'admin:alerts:read',
+    'admin:activity:read',
+    'admin:audit:read',
+    'admin:support:read',
+  ],
   billing_admin: ['admin:packages:read', 'admin:packages:write', 'admin:subscriptions:read', 'admin:subscriptions:write'],
   operations_admin: ['admin:catalog:read', 'admin:catalog:write', 'admin:flags:read'],
   trust_safety_admin: ['admin:alerts:read', 'admin:alerts:write', 'admin:activity:read'],

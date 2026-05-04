@@ -16,6 +16,7 @@ export type AccountSummary = {
   email: string;
   displayName?: string | null;
   isVerified: boolean;
+  adminDisabled?: boolean;
   role: string;
   createdAt: string;
   deletedAt?: string | null;
@@ -48,7 +49,7 @@ export type ProfileDetail = {
   archivedAt?: string | null;
   devices: DeviceDetail[];
 };
-export type FamilyDetail = FamilySummary & { childProfiles: ProfileDetail[] };
+export type FamilyDetail = FamilySummary & { childProfiles: ProfileDetail[]; supportNotes?: string | null };
 
 export type AlertItem = {
   id: string;
@@ -120,3 +121,125 @@ export type AdminUserSummary = {
   roles: string[];
 };
 export type AdminLoginResponse = { accessToken: string; refreshToken: string; admin: AdminUser };
+
+export interface AdminMutationResult {
+  message: string;
+}
+
+export interface AccountAuditItem {
+  id: string;
+  action: string;
+  entityType?: string;
+  source: 'parent_action' | 'admin_action';
+  createdAt: string;
+  reason?: string | null;
+  actorUser?: { id: string; email: string } | null;
+  actorAdmin?: { id: string; email: string; roles: string[] } | null;
+  familyId?: string | null;
+}
+
+export interface SupportNotesResult {
+  id: string;
+  supportNotes: string | null;
+  updatedAt: string;
+}
+
+export interface PairingFailureItem {
+  id: string;
+  maskedCode: string;
+  status: string;
+  familyId: string;
+  familyName: string;
+  profileId: string;
+  profileName: string;
+  appCatalogSlug: string;
+  reason: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface PairingCodeLookupResult {
+  found: boolean;
+  id?: string;
+  status?: string;
+  expiresAt?: string;
+  usedAt?: string | null;
+  createdAt?: string;
+  family?: { id: string; name: string };
+  profile?: { id: string; name: string };
+  appCatalog?: { id: string; slug: string; displayName: string };
+  usedByDevice?: { id: string; deviceName: string } | null;
+  usedByInstallation?: { id: string; status: string } | null;
+}
+
+export interface AccountDevicesResult {
+  families: Array<{
+    id: string;
+    name: string;
+    profiles: Array<{
+      id: string;
+      name: string;
+      status: string;
+      devices: Array<{
+        id: string;
+        deviceName: string;
+        type: string;
+        status: string;
+        lastSeen: string | null;
+        appInstallations: Array<{
+          id: string;
+          status: string;
+          appCatalog: { slug: string; displayName: string };
+        }>;
+      }>;
+    }>;
+  }>;
+}
+
+export interface AccountPairingHistoryItem {
+  id: string;
+  maskedCode: string;
+  status: string;
+  familyId: string;
+  profileId: string;
+  profileName: string;
+  appCatalogSlug: string;
+  createdAt: string;
+  expiresAt: string;
+  usedAt: string | null;
+  usedByDeviceName: string | null;
+}
+
+export interface AdminInviteUserPayload {
+  email: string;
+  displayName?: string;
+  roles: string[];
+}
+
+export interface AdminUpdateRolesPayload {
+  roles: string[];
+  reason: string;
+}
+
+export interface AdminUserAuditItem {
+  id: string;
+  action: string;
+  targetType?: string;
+  targetId?: string;
+  actorAdminUserId?: string;
+  actorRoleCodes?: string[];
+  reason?: string | null;
+  metadata?: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface AcceptInvitePayload {
+  inviteToken: string;
+  password: string;
+}
+
+export interface AcceptInviteResult {
+  accessToken: string;
+  refreshToken: string;
+  admin: { id: string; email: string; displayName?: string | null; roles: string[] };
+}

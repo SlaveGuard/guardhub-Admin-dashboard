@@ -6,6 +6,7 @@ type SearchInputProps = { value: string; onChange: (value: string) => void; plac
 export function SearchInput({ value, onChange, placeholder = 'Search' }: SearchInputProps) {
   const [draft, setDraft] = useState(value);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setDraft(value), [value]);
 
   useEffect(() => {
