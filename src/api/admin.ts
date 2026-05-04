@@ -25,6 +25,7 @@ import type {
   ChangePackageResult,
   CreateQuotaOverridePayload,
   FamilyDetail,
+  FamilyStats,
   FamilySummary,
   ImpactPreview,
   OversightParams,
@@ -44,6 +45,29 @@ import type {
 
 function normalizeAdminUserRoles<T extends { roles?: unknown[] }>(admin: T): T & { roles: string[] } {
   return { ...admin, roles: normalizeAdminRoleCodes(admin.roles) };
+}
+
+function normalizeFamilyStats<T extends { stats?: Partial<FamilyStats>; childProfiles?: Array<{ status?: string; devices?: Array<{ appInstallations?: unknown[] }> }> }>(
+  family: T,
+): T & { stats: FamilyStats } {
+  const childProfiles = family.childProfiles ?? [];
+  const activeProfileCount = childProfiles.filter((profile) => profile.status === 'active' || profile.status === 'paused').length;
+  const archivedProfileCount = childProfiles.filter((profile) => profile.status === 'archived').length;
+  const deviceCount = childProfiles.reduce((total, profile) => total + (profile.devices?.length ?? 0), 0);
+  const appInstallationCount = childProfiles.reduce(
+    (total, profile) => total + (profile.devices ?? []).reduce((deviceTotal, device) => deviceTotal + (device.appInstallations?.length ?? 0), 0),
+    0,
+  );
+
+  return {
+    ...family,
+    stats: {
+      activeProfileCount: family.stats?.activeProfileCount ?? activeProfileCount,
+      archivedProfileCount: family.stats?.archivedProfileCount ?? archivedProfileCount,
+      deviceCount: family.stats?.deviceCount ?? deviceCount,
+      appInstallationCount: family.stats?.appInstallationCount ?? appInstallationCount,
+    },
+  };
 }
 
 function cleanParams<T extends Record<string, string | number | boolean | undefined>>(params?: T) {
@@ -85,12 +109,12 @@ export async function getAdminAccount(accountId: string) {
 
 export async function listAdminFamilies(params: AdminFamiliesParams) {
   const { data } = await adminApiClient.get<PaginatedResult<FamilySummary>>('/admin/families', { params: cleanParams(params) });
-  return data;
+  return { ...data, items: data.items.map(normalizeFamilyStats) };
 }
 
 export async function getAdminFamily(familyId: string) {
   const { data } = await adminApiClient.get<FamilyDetail>(`/admin/families/${familyId}`);
-  return data;
+  return normalizeFamilyStats(data);
 }
 
 export async function getAdminFamilyAlerts(familyId: string, params: OversightParams = {}) {
