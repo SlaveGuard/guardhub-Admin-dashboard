@@ -86,16 +86,150 @@ export type AuditItem = {
   actorAdmin?: OwnerStub | null;
 };
 
-export type PackageLimits = {
-  activeProfileCount?: number | null;
-  archivedProfileCount?: number | null;
-  devicesPerProfile?: number | null;
-  appsPerProfile?: number | null;
-  allowedAppCatalogSlugs?: string[] | null;
-};
-export type PackageSummary = { code: string; name: string; displayName: string; limits: PackageLimits; source: string };
 export type SubscriptionSummary = { id: string; planName: string; status: string; createdAt: string; user: OwnerStub };
-export type SubscriptionDetail = SubscriptionSummary & { user: OwnerStub & { families: FamilyStub[] } };
+
+// DB-backed package (Phase 3)
+export type PackageStatus = 'draft' | 'active' | 'grandfathered' | 'retired';
+
+export interface Package {
+  id: string;
+  code: string;
+  name: string;
+  displayName: string;
+  description?: string | null;
+  status: PackageStatus;
+  price?: number | null;
+  billingInterval?: string | null;
+  currency?: string | null;
+  activeProfilesLimit?: number | null;
+  archivedProfilesLimit?: number | null;
+  devicesPerProfileLimit?: number | null;
+  appInstallationsPerProfileLimit?: number | null;
+  allowedAppCatalogSlugs: string[];
+  trialDays?: number | null;
+  isPublic: boolean;
+  sortOrder: number;
+  assignedFamilyCount?: number;
+  activatedAt?: string | null;
+  retiredAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PackageDetail extends Package {
+  recentQuotaOverrides?: QuotaOverride[];
+}
+
+export interface PackageCreatePayload {
+  code: string;
+  name: string;
+  displayName: string;
+  description?: string;
+  price?: number;
+  billingInterval?: string;
+  currency?: string;
+  activeProfilesLimit?: number | null;
+  archivedProfilesLimit?: number | null;
+  devicesPerProfileLimit?: number | null;
+  appInstallationsPerProfileLimit?: number | null;
+  allowedAppCatalogSlugs?: string[];
+  trialDays?: number;
+  isPublic?: boolean;
+  sortOrder?: number;
+}
+
+export interface PackageUpdatePayload {
+  name?: string;
+  displayName?: string;
+  description?: string;
+  price?: number;
+  billingInterval?: string;
+  currency?: string;
+  activeProfilesLimit?: number | null;
+  archivedProfilesLimit?: number | null;
+  devicesPerProfileLimit?: number | null;
+  appInstallationsPerProfileLimit?: number | null;
+  allowedAppCatalogSlugs?: string[];
+  trialDays?: number;
+  isPublic?: boolean;
+  sortOrder?: number;
+  reason: string;
+}
+
+export interface ImpactFamilyItem {
+  familyId: string;
+  familyName: string;
+  currentCount: number;
+  limit: number;
+}
+
+export interface ImpactProfileItem {
+  profileId: string;
+  profileName: string;
+  familyId: string;
+  currentCount: number;
+  limit: number;
+}
+
+export interface ImpactDisallowedItem {
+  familyId: string;
+  familyName: string;
+  disallowedSlugs: string[];
+}
+
+export interface ImpactPreview {
+  packageId: string;
+  packageCode: string;
+  totalAffectedFamilies: number;
+  familiesOverActiveProfileLimit: ImpactFamilyItem[];
+  familiesOverArchivedProfileLimit: ImpactFamilyItem[];
+  profilesOverDeviceLimit: ImpactProfileItem[];
+  profilesOverAppInstallationLimit: ImpactProfileItem[];
+  familiesWithDisallowedAppTypes: ImpactDisallowedItem[];
+}
+
+export interface ChangePackagePayload {
+  packageCode: string;
+  reason: string;
+}
+
+export interface ChangePackageResult {
+  subscriptionId: string;
+  oldPlanName: string;
+  newPlanName: string;
+  message: string;
+}
+
+export interface QuotaOverride {
+  id: string;
+  familyId: string;
+  packageId?: string | null;
+  limitKey: string;
+  overrideValue: number;
+  reason: string;
+  expiresAt: string;
+  createdByAdminUserId: string;
+  createdAt: string;
+  revokedAt?: string | null;
+}
+
+export interface CreateQuotaOverridePayload {
+  limitKey: 'activeProfilesLimit' | 'archivedProfilesLimit' | 'devicesPerProfileLimit' | 'appInstallationsPerProfileLimit';
+  overrideValue: number;
+  expiresAt: string;
+  reason: string;
+}
+
+export interface SubscriptionDetailV3 {
+  id: string;
+  planName: string;
+  status: string;
+  createdAt: string;
+  user: { id: string; email: string; displayName?: string | null; isVerified?: boolean; families: FamilyStub[] };
+  quotaOverrides?: QuotaOverride[];
+}
+
+export type SubscriptionDetail = SubscriptionDetailV3;
 
 export type OverviewPlanCount = { planName: string; count: number };
 export type OverviewMetricGroup = { total: number; verified?: number; active?: number; last24h?: number };

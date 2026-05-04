@@ -20,15 +20,23 @@ import type {
   AdminUserSummary,
   AlertItem,
   AuditItem,
+  ChangePackagePayload,
+  ChangePackageResult,
+  CreateQuotaOverridePayload,
   FamilyDetail,
   FamilySummary,
+  ImpactPreview,
   OversightParams,
   OverviewData,
-  PackageSummary,
+  Package,
+  PackageCreatePayload,
+  PackageDetail,
+  PackageUpdatePayload,
   PaginatedResult,
   PairingCodeLookupResult,
   PairingFailureItem,
-  SubscriptionDetail,
+  QuotaOverride,
+  SubscriptionDetailV3,
   SubscriptionSummary,
   SupportNotesResult,
 } from '../types/admin';
@@ -95,8 +103,43 @@ export async function getAdminFamilyAudit(familyId: string, params: OversightPar
   return data;
 }
 
-export async function listAdminPackages() {
-  const { data } = await adminApiClient.get<PackageSummary[]>('/admin/packages');
+export async function listAdminPackages(): Promise<Package[]> {
+  const { data } = await adminApiClient.get<Package[]>('/admin/packages');
+  return data;
+}
+
+export async function createPackage(payload: PackageCreatePayload): Promise<Package> {
+  const { data } = await adminApiClient.post<Package>('/admin/packages', payload);
+  return data;
+}
+
+export async function getAdminPackage(packageId: string): Promise<PackageDetail> {
+  const { data } = await adminApiClient.get<PackageDetail>(`/admin/packages/${packageId}`);
+  return data;
+}
+
+export async function updatePackage(packageId: string, payload: PackageUpdatePayload): Promise<Package> {
+  const { data } = await adminApiClient.patch<Package>(`/admin/packages/${packageId}`, payload);
+  return data;
+}
+
+export async function activatePackage(packageId: string, reason: string): Promise<Package> {
+  const { data } = await adminApiClient.post<Package>(`/admin/packages/${packageId}/activate`, { reason });
+  return data;
+}
+
+export async function retirePackage(packageId: string, reason: string): Promise<Package & { affectedFamilyCount: number }> {
+  const { data } = await adminApiClient.post<Package & { affectedFamilyCount: number }>(`/admin/packages/${packageId}/retire`, { reason });
+  return data;
+}
+
+export async function duplicatePackage(packageId: string): Promise<Package> {
+  const { data } = await adminApiClient.post<Package>(`/admin/packages/${packageId}/duplicate`);
+  return data;
+}
+
+export async function getPackageImpactPreview(packageId: string): Promise<ImpactPreview> {
+  const { data } = await adminApiClient.get<ImpactPreview>(`/admin/packages/${packageId}/impact-preview`);
   return data;
 }
 
@@ -105,8 +148,33 @@ export async function listAdminSubscriptions(params: AdminSubscriptionsParams) {
   return data;
 }
 
-export async function getAdminSubscription(subscriptionId: string) {
-  const { data } = await adminApiClient.get<SubscriptionDetail>(`/admin/subscriptions/${subscriptionId}`);
+export async function getAdminSubscription(subscriptionId: string): Promise<SubscriptionDetailV3> {
+  const { data } = await adminApiClient.get<SubscriptionDetailV3>(`/admin/subscriptions/${subscriptionId}`);
+  return data;
+}
+
+export async function changeSubscriptionPackage(subscriptionId: string, payload: ChangePackagePayload): Promise<ChangePackageResult> {
+  const { data } = await adminApiClient.post<ChangePackageResult>(`/admin/subscriptions/${subscriptionId}/change-package`, payload);
+  return data;
+}
+
+export async function cancelSubscription(subscriptionId: string, reason: string): Promise<AdminMutationResult> {
+  const { data } = await adminApiClient.post<AdminMutationResult>(`/admin/subscriptions/${subscriptionId}/cancel`, { reason });
+  return data;
+}
+
+export async function restoreSubscription(subscriptionId: string, reason: string): Promise<AdminMutationResult> {
+  const { data } = await adminApiClient.post<AdminMutationResult>(`/admin/subscriptions/${subscriptionId}/restore`, { reason });
+  return data;
+}
+
+export async function createQuotaOverride(subscriptionId: string, payload: CreateQuotaOverridePayload): Promise<QuotaOverride> {
+  const { data } = await adminApiClient.post<QuotaOverride>(`/admin/subscriptions/${subscriptionId}/quota-overrides`, payload);
+  return data;
+}
+
+export async function revokeQuotaOverride(subscriptionId: string, overrideId: string): Promise<AdminMutationResult> {
+  const { data } = await adminApiClient.delete<AdminMutationResult>(`/admin/subscriptions/${subscriptionId}/quota-overrides/${overrideId}`);
   return data;
 }
 

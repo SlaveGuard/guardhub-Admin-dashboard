@@ -13,6 +13,8 @@ import { AuditScreen } from './screens/admin/AuditScreen';
 import { FamiliesScreen } from './screens/admin/FamiliesScreen';
 import { FamilyDetailScreen } from './screens/admin/FamilyDetailScreen';
 import { OverviewScreen } from './screens/admin/OverviewScreen';
+import { PackageDetailScreen } from './screens/admin/PackageDetailScreen';
+import { PackageFormScreen } from './screens/admin/PackageFormScreen';
 import { PackagesScreen } from './screens/admin/PackagesScreen';
 import { SupportScreen } from './screens/admin/SupportScreen';
 import { SubscriptionDetailScreen } from './screens/admin/SubscriptionDetailScreen';
@@ -46,6 +48,9 @@ export default function App() {
             <Route path="accounts/:accountId" element={<AccountDetailScreen />} />
             <Route path="families" element={<FamiliesScreen />} />
             <Route path="families/:familyId" element={<FamilyDetailScreen />} />
+            <Route path="packages/new" element={<PackageFormScreen />} />
+            <Route path="packages/:packageId" element={<PackageDetailScreen />} />
+            <Route path="packages/:packageId/edit" element={<PackageFormScreen />} />
             <Route path="packages" element={<PackagesScreen />} />
             <Route path="subscriptions" element={<SubscriptionsScreen />} />
             <Route path="subscriptions/:subscriptionId" element={<SubscriptionDetailScreen />} />
