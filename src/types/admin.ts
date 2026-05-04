@@ -233,15 +233,17 @@ export type SubscriptionDetail = SubscriptionDetailV3;
 
 export type OverviewPlanCount = { planName: string; count: number };
 export type OverviewMetricGroup = { total: number; verified?: number; active?: number; last24h?: number };
+export type OverviewRecentAlertSummary = { last24hCount: number };
+export type OverviewRecentAdminAction = Partial<AuditItem> & { action: string; createdAt: string };
 export type OverviewData = {
   accounts: OverviewMetricGroup;
   families: OverviewMetricGroup;
   profiles: OverviewMetricGroup;
   devices: OverviewMetricGroup;
   appInstallations: OverviewMetricGroup;
-  subscriptions: { total: number; byPlan: OverviewPlanCount[] };
-  recentAlerts: AlertItem[];
-  recentAdminActions: AuditItem[];
+  subscriptions: { total?: number; byPlan?: OverviewPlanCount[] } | OverviewPlanCount[];
+  recentAlerts: AlertItem[] | OverviewRecentAlertSummary;
+  recentAdminActions: OverviewRecentAdminAction[];
 };
 
 export type AdminUserSummary = {

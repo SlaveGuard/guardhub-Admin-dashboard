@@ -33,6 +33,11 @@ export function OverviewScreen() {
 
   const overview = query.data;
   const recentActions = overview.recentAdminActions.slice(0, 5);
+  const subscriptionRows = Array.isArray(overview.subscriptions) ? overview.subscriptions : (overview.subscriptions.byPlan ?? []);
+  const subscriptionTotal = Array.isArray(overview.subscriptions)
+    ? subscriptionRows.reduce((total, row) => total + row.count, 0)
+    : (overview.subscriptions.total ?? subscriptionRows.reduce((total, row) => total + row.count, 0));
+  const recentAlertCount = Array.isArray(overview.recentAlerts) ? overview.recentAlerts.length : overview.recentAlerts.last24hCount;
 
   return (
     <>
@@ -45,15 +50,15 @@ export function OverviewScreen() {
       </div>
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard label="Active Devices" value={overview.devices.active ?? overview.devices.total} icon={Smartphone} />
-        <StatCard label="App Installations" value={overview.appInstallations.total} icon={AppWindow} />
-        <StatCard label="Alerts (24h)" value={overview.recentAlerts.length} icon={Siren} color={overview.recentAlerts.length > 0 ? 'red' : 'slate'} />
-        <StatCard label="Total Subscriptions" value={overview.subscriptions.total} icon={CreditCard} color="violet" />
+        <StatCard label="App Installations" value={overview.appInstallations.active ?? overview.appInstallations.total} icon={AppWindow} />
+        <StatCard label="Alerts (24h)" value={recentAlertCount} icon={Siren} color={recentAlertCount > 0 ? 'red' : 'slate'} />
+        <StatCard label="Total Subscriptions" value={subscriptionTotal} icon={CreditCard} color="violet" />
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <section className="glass-panel p-5">
           <h2 className="text-lg font-semibold text-slate-100">Subscriptions by Plan</h2>
           <div className="mt-4 divide-y divide-white/5">
-            {overview.subscriptions.byPlan.length ? overview.subscriptions.byPlan.map((row) => (
+            {subscriptionRows.length ? subscriptionRows.map((row) => (
               <div className="flex items-center justify-between py-3 text-sm" key={row.planName}>
                 <span className="text-slate-300">{row.planName}</span>
                 <span className="font-semibold text-slate-100">{row.count}</span>
@@ -64,8 +69,8 @@ export function OverviewScreen() {
         <section className="glass-panel p-5">
           <h2 className="text-lg font-semibold text-slate-100">Recent Admin Actions</h2>
           <div className="mt-4 space-y-3">
-            {recentActions.length ? recentActions.map((item) => (
-              <div className="rounded-xl border border-white/10 bg-slate-900/40 p-3" key={item.id}>
+            {recentActions.length ? recentActions.map((item, index) => (
+              <div className="rounded-xl border border-white/10 bg-slate-900/40 p-3" key={item.id ?? `${item.action}-${item.createdAt}-${index}`}>
                 <p className="text-sm font-semibold text-slate-200">{item.action}</p>
                 <p className="mt-1 text-xs text-slate-500">{formatRelative(item.createdAt)}</p>
               </div>
