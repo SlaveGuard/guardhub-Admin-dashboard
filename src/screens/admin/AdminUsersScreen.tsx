@@ -15,6 +15,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { PermissionDenied } from '../../components/PermissionDenied';
 import { useAdminAuthStore } from '../../store/adminAuthStore';
 import type { AdminUserAuditItem, AdminUserSummary } from '../../types/admin';
+import { normalizeAdminRoleCodes } from '../../utils/adminRoles';
 
 type DrawerMode = 'roles' | 'disable' | 'enable' | 'audit' | null;
 
@@ -83,8 +84,9 @@ export function AdminUsersScreen() {
   if (query.error) return <ErrorState message={getErrorMessage(query.error)} onRetry={() => void query.refetch()} />;
 
   const items = query.data ?? [];
+  const selectedUserRoles = normalizeAdminRoleCodes(selectedUser?.roles);
   const isLastSuperAdmin =
-    !!selectedUser?.roles.includes('super_admin') && items.filter((item) => item.roles.includes('super_admin')).length === 1;
+    selectedUserRoles.includes('super_admin') && items.filter((item) => normalizeAdminRoleCodes(item.roles).includes('super_admin')).length === 1;
   const columns: Column<AdminUserSummary>[] = [
     { key: 'email', label: 'Email' },
     { key: 'displayName', label: 'Display Name', render: (row) => row.displayName || 'Unknown' },
@@ -93,15 +95,18 @@ export function AdminUsersScreen() {
     {
       key: 'roles',
       label: 'Roles',
-      render: (row) => (
-        <div className="flex flex-wrap gap-1">
-          {row.roles.map((role) => (
-            <Badge key={role} variant="violet">
-              {role}
-            </Badge>
-          ))}
-        </div>
-      ),
+      render: (row) => {
+        const roles = normalizeAdminRoleCodes(row.roles);
+        return (
+          <div className="flex flex-wrap gap-1">
+            {roles.map((role) => (
+              <Badge key={role} variant="violet">
+                {role}
+              </Badge>
+            ))}
+          </div>
+        );
+      },
     },
     { key: 'lastLoginAt', label: 'Last Login', render: (row) => relative(row.lastLoginAt) },
     { key: 'createdAt', label: 'Created', render: (row) => new Date(row.createdAt).toLocaleDateString() },

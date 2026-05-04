@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { adminLogout } from '../api/admin';
 import { useAdminAuthStore } from '../store/adminAuthStore';
+import { getAdminRoleCode } from '../utils/adminRoles';
 import { SectionLabel } from './SectionLabel';
 
 type NavItem = { label: string; to: string; icon: LucideIcon };
@@ -20,7 +21,7 @@ export function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { admin, logout } = useAdminAuthStore();
-  const firstRole = admin?.roles[0] ?? 'admin';
+  const firstRole = getAdminRoleCode(admin?.roles[0]) || 'admin';
 
   async function handleLogout() {
     try {

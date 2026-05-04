@@ -1,5 +1,6 @@
 import { adminApiClient } from './client';
 import type { AdminUser } from '../store/adminAuthStore';
+import { normalizeAdminRoleCodes } from '../utils/adminRoles';
 import type {
   AccountDetail,
   AccountAuditItem,
@@ -41,6 +42,10 @@ import type {
   SupportNotesResult,
 } from '../types/admin';
 
+function normalizeAdminUserRoles<T extends { roles?: unknown[] }>(admin: T): T & { roles: string[] } {
+  return { ...admin, roles: normalizeAdminRoleCodes(admin.roles) };
+}
+
 function cleanParams<T extends Record<string, string | number | boolean | undefined>>(params?: T) {
   const next: Record<string, string | number | boolean> = {};
   Object.entries(params ?? {}).forEach(([key, value]) => {
@@ -51,7 +56,7 @@ function cleanParams<T extends Record<string, string | number | boolean | undefi
 
 export async function adminLogin(email: string, password: string) {
   const { data } = await adminApiClient.post<AdminLoginResponse>('/admin/auth/login', { email, password });
-  return data;
+  return { ...data, admin: normalizeAdminUserRoles(data.admin) };
 }
 
 export async function adminLogout() {
@@ -60,7 +65,7 @@ export async function adminLogout() {
 
 export async function getAdminMe() {
   const { data } = await adminApiClient.get<AdminUser>('/admin/me');
-  return data;
+  return normalizeAdminUserRoles(data);
 }
 
 export async function getAdminOverview() {
@@ -195,7 +200,7 @@ export async function getAdminAudit(params: OversightParams) {
 
 export async function listAdminUsers() {
   const { data } = await adminApiClient.get<AdminUserSummary[]>('/admin/admin-users');
-  return data;
+  return data.map(normalizeAdminUserRoles);
 }
 
 export async function disableAccount(accountId: string, reason: string) {
@@ -250,12 +255,12 @@ export async function getAccountPairingHistory(accountId: string) {
 
 export async function inviteAdminUser(payload: AdminInviteUserPayload) {
   const { data } = await adminApiClient.post<AdminUserSummary>('/admin/admin-users/invite', payload);
-  return data;
+  return normalizeAdminUserRoles(data);
 }
 
 export async function updateAdminUserRoles(adminUserId: string, payload: AdminUpdateRolesPayload) {
   const { data } = await adminApiClient.patch<AdminUserSummary>(`/admin/admin-users/${adminUserId}/roles`, payload);
-  return data;
+  return normalizeAdminUserRoles(data);
 }
 
 export async function disableAdminUser(adminUserId: string, reason: string) {
@@ -275,5 +280,5 @@ export async function getAdminUserAudit(adminUserId: string) {
 
 export async function acceptInvite(payload: AcceptInvitePayload) {
   const { data } = await adminApiClient.post<AcceptInviteResult>('/admin/auth/accept-invite', payload);
-  return data;
+  return { ...data, admin: normalizeAdminUserRoles(data.admin) };
 }

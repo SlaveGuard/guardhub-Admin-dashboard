@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { normalizeAdminRoleCodes } from '../utils/adminRoles';
 
 export interface AdminUser {
   id: string;
@@ -44,13 +45,13 @@ export const useAdminAuthStore = create<AdminAuthState>()(
       token: null,
       refreshToken: null,
       admin: null,
-      setAuth: (token, refreshToken, admin) => set({ token, refreshToken, admin }),
+      setAuth: (token, refreshToken, admin) => set({ token, refreshToken, admin: { ...admin, roles: normalizeAdminRoleCodes(admin.roles) } }),
       setTokens: (token, refreshToken) => set((s) => ({ token, refreshToken, admin: s.admin })),
       logout: () => set({ token: null, refreshToken: null, admin: null }),
       isAuthenticated: () => !!get().token,
-      hasRole: (role) => get().admin?.roles.includes(role) ?? false,
+      hasRole: (role) => normalizeAdminRoleCodes(get().admin?.roles).includes(role),
       hasPermission: (permission) => {
-        const roles = get().admin?.roles ?? [];
+        const roles = normalizeAdminRoleCodes(get().admin?.roles);
         if (roles.includes('super_admin')) return true;
         return roles.some((r) =>
           (ROLE_PERMISSIONS[r] ?? []).some(

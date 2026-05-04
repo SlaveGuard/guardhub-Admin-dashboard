@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { updateAdminUserRoles } from '../../api/admin';
 import type { AdminUserSummary } from '../../types/admin';
+import { normalizeAdminRoleCodes } from '../../utils/adminRoles';
 import { getErrorMessage } from '../ErrorState';
 import { LoadingSpinner } from '../LoadingSpinner';
 
@@ -31,10 +32,11 @@ export function EditRolesModal({ isOpen, user, isLastSuperAdmin, onClose, onSucc
 
 function EditRolesModalContent({ user, isLastSuperAdmin, onClose, onSuccess }: Omit<EditRolesModalProps, 'isOpen'> & { user: AdminUserSummary }) {
   const queryClient = useQueryClient();
-  const [roles, setRoles] = useState<string[]>(user.roles);
+  const userRoles = normalizeAdminRoleCodes(user.roles);
+  const [roles, setRoles] = useState<string[]>(userRoles);
   const [reason, setReason] = useState('');
   const trimmedReason = reason.trim();
-  const removingOnlySuperAdmin = !!user?.roles.includes('super_admin') && !roles.includes('super_admin') && isLastSuperAdmin;
+  const removingOnlySuperAdmin = userRoles.includes('super_admin') && !roles.includes('super_admin') && isLastSuperAdmin;
   const canSubmit = roles.length > 0 && trimmedReason.length >= 4;
   const mutation = useMutation({
     mutationFn: () => updateAdminUserRoles(user?.id ?? '', { roles, reason: trimmedReason }),
