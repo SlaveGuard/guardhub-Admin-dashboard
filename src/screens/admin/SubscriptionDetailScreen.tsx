@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Home } from 'lucide-react';
+import { Activity, ArrowLeft, ChevronsDown, ChevronsRight, Home, Link2Off, Receipt } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -7,22 +7,32 @@ import {
   cancelSubscription,
   changeSubscriptionPackage,
   createQuotaOverride,
+  endTrial,
+  extendTrial,
   getAdminSubscription,
+  getSubscriptionBillingState,
+  getSubscriptionEvents,
+  getSubscriptionInvoices,
   listAdminPackages,
   restoreSubscription,
   revokeQuotaOverride,
 } from '../../api/admin';
 import { Badge } from '../../components/Badge';
+import { BillingStatusBadge } from '../../components/BillingStatusBadge';
 import { ConfirmActionModal } from '../../components/ConfirmActionModal';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState, getErrorMessage } from '../../components/ErrorState';
+import { InvoiceStatusBadge } from '../../components/InvoiceStatusBadge';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
+import { MoneyAmount } from '../../components/MoneyAmount';
 import { PageHeader } from '../../components/PageHeader';
 import { PermissionDenied } from '../../components/PermissionDenied';
 import { useAdminAuthStore } from '../../store/adminAuthStore';
-import type { CreateQuotaOverridePayload, QuotaOverride } from '../../types/admin';
+import type { BillingInvoice, BillingState, CreateQuotaOverridePayload, EndTrialPayload, ExtendTrialPayload, QuotaOverride } from '../../types/admin';
 
 type ConfirmAction = 'change-package' | 'cancel' | 'restore';
+type BillingTab = 'state' | 'invoices' | 'events';
+type TrialAction = 'extend' | 'end';
 
 const limitKeyOptions: CreateQuotaOverridePayload['limitKey'][] = [
   'activeProfilesLimit',
@@ -46,13 +56,186 @@ function isFutureDate(value: string) {
   return new Date(value + 'T00:00:00').getTime() > Date.now();
 }
 
+function formatDate(value: string | null | undefined) {
+  return value ? new Date(value).toLocaleDateString() : null;
+}
+
+function formatPeriod(start: string | null | undefined, end: string | null | undefined) {
+  const formattedStart = formatDate(start);
+  const formattedEnd = formatDate(end);
+  if (!formattedStart && !formattedEnd) return '-';
+  return `${formattedStart ?? '-'} -> ${formattedEnd ?? '-'}`;
+}
+
+function formatRelative(value: string) {
+  const diff = new Date(value).getTime() - Date.now();
+  const units: [Intl.RelativeTimeFormatUnit, number][] = [['day', 86_400_000], ['hour', 3_600_000], ['minute', 60_000]];
+  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+  for (const [unit, ms] of units) {
+    const amount = Math.round(diff / ms);
+    if (Math.abs(amount) >= 1) return rtf.format(amount, unit);
+  }
+  return rtf.format(0, 'minute');
+}
+
+function isActiveTrial(trialEndsAt: string | null | undefined) {
+  return !!trialEndsAt && new Date(trialEndsAt).getTime() > Date.now();
+}
+
+function NotLinkedPanel() {
+  return (
+    <div className="glass-panel border-l-4 border-l-yellow-500/70 p-4">
+      <div className="flex items-start gap-3">
+        <div className="rounded-xl bg-yellow-500/10 p-2 text-yellow-400">
+          <Link2Off className="h-5 w-5" />
+        </div>
+        <div>
+          <h3 className="text-sm font-semibold text-slate-100">Not linked to billing provider</h3>
+          <p className="mt-1 text-sm leading-6 text-slate-400">
+            This subscription has no Stripe subscription ID. Webhook events will link it automatically once the customer subscribes via the payment provider.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type BillingStatePanelProps = {
+  billing: BillingState;
+  canWriteBilling: boolean;
+  extendTrialDate: string;
+  showExtendTrialDate: boolean;
+  todayDate: string;
+  isExtendTrialDateFuture: boolean;
+  isTrialMutationPending: boolean;
+  setExtendTrialDate: (value: string) => void;
+  setShowExtendTrialDate: (value: boolean) => void;
+  openExtendTrialConfirm: () => void;
+  openEndTrialConfirm: () => void;
+};
+
+function BillingStatePanel({
+  billing,
+  canWriteBilling,
+  extendTrialDate,
+  showExtendTrialDate,
+  todayDate,
+  isExtendTrialDateFuture,
+  isTrialMutationPending,
+  setExtendTrialDate,
+  setShowExtendTrialDate,
+  openExtendTrialConfirm,
+  openEndTrialConfirm,
+}: BillingStatePanelProps) {
+  const trialActive = isActiveTrial(billing.trialEndsAt);
+
+  return (
+    <div className="mt-4 space-y-5">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-3 text-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <BillingStatusBadge status={billing.billingStatus} />
+            {billing.planName ? <Badge variant="violet">{billing.planName}</Badge> : null}
+            {billing.localStatus ? <Badge variant={statusVariant(billing.localStatus)}>{billing.localStatus}</Badge> : null}
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase text-slate-500">Provider Customer</p>
+            <p className="mt-1 break-all font-mono text-xs text-slate-300">{billing.providerCustomerId ?? '-'}</p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase text-slate-500">Provider Subscription</p>
+            <p className="mt-1 break-all font-mono text-xs text-slate-300">{billing.providerSubscriptionId ?? '-'}</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="rounded-xl border border-white/10 p-3">
+            <p className="text-xs font-semibold uppercase text-slate-500">Current Period</p>
+            <p className="mt-1 text-slate-200">{formatPeriod(billing.currentPeriodStart, billing.currentPeriodEnd)}</p>
+          </div>
+          <div className="rounded-xl border border-white/10 p-3">
+            <p className="text-xs font-semibold uppercase text-slate-500">Trial Ends</p>
+            <p className="mt-1 text-slate-200">{formatDate(billing.trialEndsAt) ?? 'No active trial'}</p>
+          </div>
+          <div className="rounded-xl border border-white/10 p-3">
+            <p className="text-xs font-semibold uppercase text-slate-500">Scheduled Cancel</p>
+            <p className="mt-1 text-slate-200">{formatDate(billing.cancelAt) ?? '-'}</p>
+          </div>
+          <div className="rounded-xl border border-white/10 p-3">
+            <p className="text-xs font-semibold uppercase text-slate-500">Canceled At</p>
+            <p className="mt-1 text-slate-200">{formatDate(billing.canceledAt) ?? '-'}</p>
+          </div>
+          <div className="col-span-2 rounded-xl border border-white/10 p-3">
+            <p className="text-xs font-semibold uppercase text-slate-500">Cancel Reason</p>
+            <p className="mt-1 text-slate-200">{billing.cancelReason ?? '-'}</p>
+          </div>
+        </div>
+      </div>
+
+      {canWriteBilling ? (
+        <div className="border-t border-white/10 pt-5">
+          <h3 className="text-sm font-semibold text-slate-200">Trial Management</h3>
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+            <button
+              className="btn-secondary inline-flex items-center justify-center gap-2"
+              type="button"
+              disabled={isTrialMutationPending}
+              onClick={() => setShowExtendTrialDate(!showExtendTrialDate)}
+            >
+              <ChevronsRight className="h-4 w-4" />
+              Extend Trial
+            </button>
+            <button
+              className="btn-danger inline-flex items-center justify-center gap-2"
+              type="button"
+              disabled={!trialActive || isTrialMutationPending}
+              onClick={openEndTrialConfirm}
+            >
+              <ChevronsDown className="h-4 w-4" />
+              End Trial Now
+            </button>
+          </div>
+          {showExtendTrialDate ? (
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+              <input
+                className="glass-input"
+                min={todayDate}
+                type="date"
+                value={extendTrialDate}
+                onChange={(event) => setExtendTrialDate(event.target.value)}
+              />
+              <button
+                className="btn-primary inline-flex items-center justify-center gap-2"
+                type="button"
+                disabled={!isExtendTrialDateFuture || isTrialMutationPending}
+                onClick={openExtendTrialConfirm}
+              >
+                Confirm Extend
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function SubscriptionDetailScreen() {
   const { subscriptionId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const canRead = useAdminAuthStore((state) => state.hasPermission('admin:subscriptions:read'));
   const canWrite = useAdminAuthStore((state) => state.hasPermission('admin:subscriptions:write'));
+  const canReadBilling = useAdminAuthStore((state) => state.hasPermission('admin:billing:read'));
+  const canWriteBilling = useAdminAuthStore((state) => state.hasPermission('admin:billing:write'));
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const [billingTab, setBillingTab] = useState<BillingTab>('state');
+  const [billingTabTouched, setBillingTabTouched] = useState(false);
+  const [invoicesState, setInvoicesState] = useState<{ items: BillingInvoice[]; hasMore: boolean; lastId?: string }>({ items: [], hasMore: false });
+  const [invoicesLinked, setInvoicesLinked] = useState<boolean | null>(null);
+  const [invoicesRequested, setInvoicesRequested] = useState(false);
+  const [trialAction, setTrialAction] = useState<TrialAction | null>(null);
+  const [extendTrialDate, setExtendTrialDate] = useState('');
+  const [showExtendTrialDate, setShowExtendTrialDate] = useState(false);
   const [selectedPackageCode, setSelectedPackageCode] = useState('');
   const [overrideLimitKey, setOverrideLimitKey] = useState<CreateQuotaOverridePayload['limitKey']>('activeProfilesLimit');
   const [overrideValue, setOverrideValue] = useState('');
@@ -60,6 +243,9 @@ export function SubscriptionDetailScreen() {
   const [overrideReason, setOverrideReason] = useState('');
   const [overrideError, setOverrideError] = useState<string | null>(null);
   const [revokingOverrideId, setRevokingOverrideId] = useState<string | null>(null);
+
+  const todayDate = new Date().toISOString().split('T')[0];
+  const isExtendTrialDateFuture = isFutureDate(extendTrialDate);
 
   const query = useQuery({
     queryKey: ['admin', 'subscriptions', subscriptionId],
@@ -71,6 +257,16 @@ export function SubscriptionDetailScreen() {
     queryFn: listAdminPackages,
     enabled: canWrite,
   });
+  const billingQuery = useQuery({
+    queryKey: ['admin', 'subscriptions', subscriptionId, 'billing'],
+    queryFn: () => getSubscriptionBillingState(subscriptionId ?? ''),
+    enabled: canReadBilling && billingTabTouched && billingTab === 'state' && !!subscriptionId,
+  });
+  const eventsQuery = useQuery({
+    queryKey: ['admin', 'subscriptions', subscriptionId, 'events'],
+    queryFn: () => getSubscriptionEvents(subscriptionId ?? ''),
+    enabled: canReadBilling && billingTabTouched && billingTab === 'events' && !!subscriptionId,
+  });
 
   const activePackages = useMemo(() => (packagesQuery.data ?? []).filter((pkg) => pkg.status === 'active'), [packagesQuery.data]);
 
@@ -80,8 +276,38 @@ export function SubscriptionDetailScreen() {
     setSelectedPackageCode(currentPackage?.code ?? activePackages[0].code);
   }, [activePackages, query.data, selectedPackageCode]);
 
+  const invoicesMutation = useMutation({
+    mutationFn: (startingAfter?: string) => {
+      if (!canReadBilling || !subscriptionId) throw new Error('Requires admin:billing:read permission.');
+      return getSubscriptionInvoices(subscriptionId, { limit: 20, startingAfter });
+    },
+    onSuccess: (result, startingAfter) => {
+      setInvoicesLinked(result.linked);
+      setInvoicesState((current) => {
+        const items = startingAfter ? [...current.items, ...result.invoices] : result.invoices;
+        return {
+          items,
+          hasMore: result.hasMore,
+          lastId: items.at(-1)?.id,
+        };
+      });
+    },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
+
+  useEffect(() => {
+    if (!canReadBilling || !subscriptionId || billingTab !== 'invoices' || !billingTabTouched || invoicesRequested || invoicesState.items.length > 0 || invoicesMutation.isPending) return;
+    setInvoicesRequested(true);
+    invoicesMutation.mutate(undefined);
+  }, [billingTab, billingTabTouched, canReadBilling, invoicesMutation, invoicesRequested, invoicesState.items.length, subscriptionId]);
+
   const invalidateSubscription = async () => {
     await queryClient.invalidateQueries({ queryKey: ['admin', 'subscriptions', subscriptionId] });
+  };
+
+  const invalidateBilling = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'subscriptions', subscriptionId] });
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'subscriptions', subscriptionId, 'billing'] });
   };
 
   const changePackageMutation = useMutation({
@@ -139,6 +365,34 @@ export function SubscriptionDetailScreen() {
     onSettled: () => setRevokingOverrideId(null),
   });
 
+  const extendTrialMutation = useMutation({
+    mutationFn: (payload: ExtendTrialPayload) => {
+      if (!canWriteBilling || !subscriptionId) throw new Error('Requires admin:billing:write permission.');
+      return extendTrial(subscriptionId, payload);
+    },
+    onSuccess: async (result) => {
+      toast.success('Trial extended to ' + new Date(result.trialEndsAt).toLocaleDateString());
+      setTrialAction(null);
+      setShowExtendTrialDate(false);
+      setExtendTrialDate('');
+      await invalidateBilling();
+    },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
+
+  const endTrialMutation = useMutation({
+    mutationFn: (payload: EndTrialPayload) => {
+      if (!canWriteBilling || !subscriptionId) throw new Error('Requires admin:billing:write permission.');
+      return endTrial(subscriptionId, payload);
+    },
+    onSuccess: async () => {
+      toast.success('Trial ended');
+      setTrialAction(null);
+      await invalidateBilling();
+    },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
+
   if (!canRead) return <PermissionDenied description="This section requires subscription read access." />;
   if (query.isLoading) return <div className="h-96 animate-pulse rounded-2xl bg-white/5" />;
   if (query.error || !query.data) return <ErrorState message={query.error ? getErrorMessage(query.error) : 'Subscription not found'} onRetry={() => void query.refetch()} />;
@@ -154,6 +408,12 @@ export function SubscriptionDetailScreen() {
     overrideValueNumber < 1 ||
     !isFutureDate(overrideExpiresAt) ||
     overrideReason.trim().length < 4;
+  const isTrialMutationPending = extendTrialMutation.isPending || endTrialMutation.isPending;
+
+  function selectBillingTab(tab: BillingTab) {
+    setBillingTab(tab);
+    setBillingTabTouched(true);
+  }
 
   function handleGrantOverride() {
     if (overrideInvalid) {
@@ -167,6 +427,137 @@ export function SubscriptionDetailScreen() {
       expiresAt: new Date(overrideExpiresAt + 'T23:59:59').toISOString(),
       reason: overrideReason.trim(),
     });
+  }
+
+  function openExtendTrialConfirm() {
+    if (!isExtendTrialDateFuture) {
+      toast.error('Choose a future trial end date.');
+      return;
+    }
+    setTrialAction('extend');
+  }
+
+  function renderInvoiceContent() {
+    if (invoicesMutation.isPending && invoicesState.items.length === 0) {
+      return (
+        <div className="flex justify-center py-12">
+          <LoadingSpinner />
+        </div>
+      );
+    }
+    if (invoicesMutation.error && invoicesState.items.length === 0) {
+      return <ErrorState message={getErrorMessage(invoicesMutation.error)} onRetry={() => { setInvoicesRequested(true); invoicesMutation.mutate(undefined); }} />;
+    }
+    if (invoicesLinked === false) return <p className="mt-4 text-sm text-slate-400">No billing provider linked.</p>;
+    if (invoicesState.items.length === 0) return <EmptyState icon={Receipt} title="No invoices found" />;
+
+    return (
+      <div className="mt-4 space-y-4">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-white/5">
+            <thead className="bg-slate-950/50">
+              <tr>
+                <th className="table-header-cell">Number</th>
+                <th className="table-header-cell">Status</th>
+                <th className="table-header-cell">Amount Due</th>
+                <th className="table-header-cell">Amount Paid</th>
+                <th className="table-header-cell">Period</th>
+                <th className="table-header-cell">Paid At</th>
+                <th className="table-header-cell">Link</th>
+              </tr>
+            </thead>
+            <tbody>
+              {invoicesState.items.map((invoice) => (
+                <tr className="table-row" key={invoice.id}>
+                  <td className="table-cell font-mono text-slate-300">{invoice.number ?? invoice.id}</td>
+                  <td className="table-cell"><InvoiceStatusBadge status={invoice.status} /></td>
+                  <td className="table-cell"><MoneyAmount amountCents={invoice.amountDue} currency={invoice.currency} /></td>
+                  <td className="table-cell"><MoneyAmount amountCents={invoice.amountPaid} currency={invoice.currency} /></td>
+                  <td className="table-cell">{formatPeriod(invoice.periodStart, invoice.periodEnd)}</td>
+                  <td className="table-cell">{formatDate(invoice.paidAt) ?? '-'}</td>
+                  <td className="table-cell">
+                    {invoice.hostedInvoiceUrl ? (
+                      <a className="text-violet-400 hover:text-violet-300" href={invoice.hostedInvoiceUrl} rel="noreferrer" target="_blank">
+                        View
+                      </a>
+                    ) : '-'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {invoicesMutation.error ? <p className="text-sm text-red-400">{getErrorMessage(invoicesMutation.error)}</p> : null}
+        {invoicesState.hasMore ? (
+          <button
+            className="btn-secondary inline-flex items-center justify-center gap-2"
+            type="button"
+            disabled={invoicesMutation.isPending}
+            onClick={() => invoicesMutation.mutate(invoicesState.lastId)}
+          >
+            {invoicesMutation.isPending ? <LoadingSpinner size="sm" /> : null}
+            Load more
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
+  function renderBillingContent() {
+    if (!canReadBilling) return <PermissionDenied description="Requires admin:billing:read permission." />;
+    if (!billingTabTouched) return null;
+    if (billingTab === 'state') {
+      if (billingQuery.isLoading) {
+        return (
+          <div className="flex justify-center py-12">
+            <LoadingSpinner />
+          </div>
+        );
+      }
+      if (billingQuery.error || !billingQuery.data) {
+        return <ErrorState message={billingQuery.error ? getErrorMessage(billingQuery.error) : 'Billing state not found'} onRetry={() => void billingQuery.refetch()} />;
+      }
+      if (!billingQuery.data.linked) return <div className="mt-4"><NotLinkedPanel /></div>;
+      return (
+        <BillingStatePanel
+          billing={billingQuery.data}
+          canWriteBilling={canWriteBilling}
+          extendTrialDate={extendTrialDate}
+          showExtendTrialDate={showExtendTrialDate}
+          todayDate={todayDate}
+          isExtendTrialDateFuture={isExtendTrialDateFuture}
+          isTrialMutationPending={isTrialMutationPending}
+          setExtendTrialDate={setExtendTrialDate}
+          setShowExtendTrialDate={setShowExtendTrialDate}
+          openExtendTrialConfirm={openExtendTrialConfirm}
+          openEndTrialConfirm={() => setTrialAction('end')}
+        />
+      );
+    }
+    if (billingTab === 'invoices') return renderInvoiceContent();
+    if (eventsQuery.isLoading) {
+      return (
+        <div className="flex justify-center py-12">
+          <LoadingSpinner />
+        </div>
+      );
+    }
+    if (eventsQuery.error) return <ErrorState message={getErrorMessage(eventsQuery.error)} onRetry={() => void eventsQuery.refetch()} />;
+    const events = eventsQuery.data ?? [];
+    if (!events.length) return <EmptyState icon={Activity} title="No webhook events recorded" />;
+    return (
+      <div className="mt-4 space-y-3">
+        {events.map((event) => (
+          <div className="glass-panel flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between" key={event.id}>
+            <div>
+              <p className="font-mono text-sm text-slate-200">{event.eventType}</p>
+              <p className="mt-1 text-xs text-slate-500">{formatRelative(event.processedAt)}</p>
+            </div>
+            {event.processingNote ? <p className="text-sm italic text-slate-400">{event.processingNote}</p> : null}
+          </div>
+        ))}
+      </div>
+    );
   }
 
   return (
@@ -294,9 +685,28 @@ export function SubscriptionDetailScreen() {
         </section>
       ) : null}
 
-      <section className="glass-panel border-l-4 border-l-amber-500/70 p-5">
+      <section className="glass-panel p-5">
         <h2 className="text-lg font-semibold text-slate-100">Billing</h2>
-        <p className="mt-2 text-sm text-amber-100">Billing integration (renewal dates, payment status, invoice history) is available in Phase 4.</p>
+        {canReadBilling ? (
+          <>
+            <div className="mt-4 flex gap-2">
+              <button className={billingTabTouched && billingTab === 'state' ? 'btn-primary text-sm' : 'btn-secondary text-sm'} type="button" onClick={() => selectBillingTab('state')}>
+                State
+              </button>
+              <button className={billingTabTouched && billingTab === 'invoices' ? 'btn-primary text-sm' : 'btn-secondary text-sm'} type="button" onClick={() => selectBillingTab('invoices')}>
+                Invoices
+              </button>
+              <button className={billingTabTouched && billingTab === 'events' ? 'btn-primary text-sm' : 'btn-secondary text-sm'} type="button" onClick={() => selectBillingTab('events')}>
+                Events
+              </button>
+            </div>
+            {renderBillingContent()}
+          </>
+        ) : (
+          <div className="mt-4">
+            {renderBillingContent()}
+          </div>
+        )}
       </section>
 
       <ConfirmActionModal
@@ -331,6 +741,28 @@ export function SubscriptionDetailScreen() {
         isLoading={restoreMutation.isPending}
         onConfirm={(reason) => restoreMutation.mutate(reason)}
         onCancel={() => setConfirmAction(null)}
+      />
+      <ConfirmActionModal
+        isOpen={trialAction === 'extend'}
+        title="Extend Trial"
+        description={'Set trial end date to ' + extendTrialDate + '.'}
+        variant="default"
+        requireReason
+        actionLabel="Extend Trial"
+        isLoading={extendTrialMutation.isPending}
+        onConfirm={(reason) => extendTrialMutation.mutate({ trialEndsAt: extendTrialDate + 'T23:59:59.000Z', reason })}
+        onCancel={() => setTrialAction(null)}
+      />
+      <ConfirmActionModal
+        isOpen={trialAction === 'end'}
+        title="End Trial Now"
+        description="This will immediately end the trial period."
+        variant="danger"
+        requireReason
+        actionLabel="End Trial"
+        isLoading={endTrialMutation.isPending}
+        onConfirm={(reason) => endTrialMutation.mutate({ reason })}
+        onCancel={() => setTrialAction(null)}
       />
     </>
   );

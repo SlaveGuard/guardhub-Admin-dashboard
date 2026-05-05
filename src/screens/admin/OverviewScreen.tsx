@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { AppWindow, CreditCard, Home, Siren, Smartphone, UserCheck, Users } from 'lucide-react';
+import { AlertCircle, AppWindow, ChevronsRight, CreditCard, Home, Link, Siren, Smartphone, UserCheck, Users, XCircle } from 'lucide-react';
 import { getAdminOverview } from '../../api/admin';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState, getErrorMessage } from '../../components/ErrorState';
@@ -53,6 +53,15 @@ export function OverviewScreen() {
         <StatCard label="App Installations" value={overview.appInstallations.active ?? overview.appInstallations.total} icon={AppWindow} />
         <StatCard label="Alerts (24h)" value={recentAlertCount} icon={Siren} color={recentAlertCount > 0 ? 'red' : 'slate'} />
         <StatCard label="Total Subscriptions" value={subscriptionTotal} icon={CreditCard} color="violet" />
+      </div>
+      <div>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Billing</p>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <StatCard label="Trialing" value={overview.billing?.trialing ?? 0} icon={ChevronsRight} color="violet" />
+          <StatCard label="Past Due" value={overview.billing?.pastDue ?? 0} icon={AlertCircle} color="red" />
+          <StatCard label="Provider Linked" value={overview.billing?.providerLinkedCount ?? 0} icon={Link} color="green" />
+          <StatCard label="Canceled" value={overview.billing?.canceled ?? 0} icon={XCircle} color="slate" />
+        </div>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <section className="glass-panel p-5">

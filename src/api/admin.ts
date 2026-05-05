@@ -21,6 +21,9 @@ import type {
   AdminUserSummary,
   AlertItem,
   AuditItem,
+  BillingState,
+  EndTrialPayload,
+  ExtendTrialPayload,
   ChangePackagePayload,
   ChangePackageResult,
   CreateQuotaOverridePayload,
@@ -38,9 +41,12 @@ import type {
   PairingCodeLookupResult,
   PairingFailureItem,
   QuotaOverride,
+  InvoiceListResult,
   SubscriptionDetailV3,
+  SubscriptionEventItem,
   SubscriptionSummary,
   SupportNotesResult,
+  TrialActionResult,
 } from '../types/admin';
 
 function normalizeAdminUserRoles<T extends { roles?: unknown[] }>(admin: T): T & { roles: string[] } {
@@ -204,6 +210,34 @@ export async function createQuotaOverride(subscriptionId: string, payload: Creat
 
 export async function revokeQuotaOverride(subscriptionId: string, overrideId: string): Promise<AdminMutationResult> {
   const { data } = await adminApiClient.delete<AdminMutationResult>(`/admin/subscriptions/${subscriptionId}/quota-overrides/${overrideId}`);
+  return data;
+}
+
+export async function getSubscriptionBillingState(subscriptionId: string): Promise<BillingState> {
+  const { data } = await adminApiClient.get<BillingState>(`/admin/subscriptions/${subscriptionId}/billing`);
+  return data;
+}
+
+export async function getSubscriptionInvoices(
+  subscriptionId: string,
+  params?: { limit?: number; startingAfter?: string },
+): Promise<InvoiceListResult> {
+  const { data } = await adminApiClient.get<InvoiceListResult>(`/admin/subscriptions/${subscriptionId}/invoices`, { params: cleanParams(params) });
+  return data;
+}
+
+export async function getSubscriptionEvents(subscriptionId: string): Promise<SubscriptionEventItem[]> {
+  const { data } = await adminApiClient.get<SubscriptionEventItem[]>(`/admin/subscriptions/${subscriptionId}/events`);
+  return data;
+}
+
+export async function extendTrial(subscriptionId: string, payload: ExtendTrialPayload): Promise<TrialActionResult> {
+  const { data } = await adminApiClient.post<TrialActionResult>(`/admin/subscriptions/${subscriptionId}/trial/extend`, payload);
+  return data;
+}
+
+export async function endTrial(subscriptionId: string, payload: EndTrialPayload): Promise<TrialActionResult> {
+  const { data } = await adminApiClient.post<TrialActionResult>(`/admin/subscriptions/${subscriptionId}/trial/end`, payload);
   return data;
 }
 

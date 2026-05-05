@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { listAdminSubscriptions } from '../../api/admin';
 import { Badge } from '../../components/Badge';
+import { BillingStatusBadge } from '../../components/BillingStatusBadge';
 import type { Column } from '../../components/DataTable';
 import { DataTable } from '../../components/DataTable';
 import { EmptyState } from '../../components/EmptyState';
@@ -22,23 +23,39 @@ function statusVariant(status: string) {
 
 export function SubscriptionsScreen() {
   const canRead = useAdminAuthStore((state) => state.hasPermission('admin:subscriptions:read'));
+  const canReadBilling = useAdminAuthStore((state) => state.hasPermission('admin:billing:read'));
   const [page, setPage] = useState(1);
   const [planFilter, setPlanFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const hasFilters = planFilter !== 'all' || statusFilter !== 'all';
+  const [billingStatusFilter, setBillingStatusFilter] = useState('all');
+  const hasFilters = planFilter !== 'all' || statusFilter !== 'all' || (canReadBilling && billingStatusFilter !== 'all');
   const query = useQuery({
-    queryKey: ['admin', 'subscriptions', page, planFilter, statusFilter],
-    queryFn: () => listAdminSubscriptions({ page, limit: 20, planName: planFilter === 'all' ? undefined : planFilter, status: statusFilter === 'all' ? undefined : statusFilter }),
+    queryKey: ['admin', 'subscriptions', page, planFilter, statusFilter, canReadBilling ? billingStatusFilter : 'all'],
+    queryFn: () =>
+      listAdminSubscriptions({
+        page,
+        limit: 20,
+        planName: planFilter === 'all' ? undefined : planFilter,
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        billingStatus: canReadBilling && billingStatusFilter !== 'all' ? billingStatusFilter : undefined,
+      }),
     enabled: canRead,
   });
 
   if (!canRead) return <PermissionDenied description="This section requires subscription read access." />;
   if (query.error) return <ErrorState message={getErrorMessage(query.error)} onRetry={() => void query.refetch()} />;
 
+  const billingColumns: Column<SubscriptionSummary>[] = canReadBilling
+    ? [
+        { key: 'billingStatus', label: 'Billing Status', render: (row) => <BillingStatusBadge status={row.billingStatus} /> },
+        { key: 'currentPeriodEnd', label: 'Renewal', render: (row) => row.currentPeriodEnd ? new Date(row.currentPeriodEnd).toLocaleDateString() : '-' },
+      ]
+    : [];
   const columns: Column<SubscriptionSummary>[] = [
     { key: 'owner', label: 'Owner Email', render: (row) => row.user.email },
     { key: 'planName', label: 'Plan', render: (row) => <Badge variant="violet">{row.planName}</Badge> },
     { key: 'status', label: 'Status', render: (row) => <Badge variant={statusVariant(row.status)}>{row.status}</Badge> },
+    ...billingColumns,
     { key: 'createdAt', label: 'Created', render: (row) => new Date(row.createdAt).toLocaleDateString() },
     { key: 'actions', label: 'Actions', render: (row) => <Link className="inline-flex items-center gap-1 text-violet-400 hover:text-violet-300" to={`/admin/subscriptions/${row.id}`}><Eye className="h-4 w-4" />View</Link> },
   ];
@@ -54,9 +71,14 @@ export function SubscriptionsScreen() {
         <select className="glass-input w-auto" value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }}>
           <option value="all">All statuses</option><option value="active">active</option><option value="inactive">inactive</option><option value="canceled">canceled</option>
         </select>
+        {canReadBilling ? (
+          <select className="glass-input w-auto" value={billingStatusFilter} onChange={(event) => { setBillingStatusFilter(event.target.value); setPage(1); }}>
+            <option value="all">All Billing</option><option value="active">Active</option><option value="trialing">Trialing</option><option value="past_due">Past Due</option><option value="canceled">Canceled</option>
+          </select>
+        ) : null}
       </div>
       <DataTable columns={columns} data={items} isLoading={query.isLoading} emptyMessage={hasFilters ? 'No results match your filters.' : 'No subscriptions found.'} />
-      {!query.isLoading && items.length === 0 && hasFilters ? <button className="btn-secondary" type="button" onClick={() => { setPlanFilter('all'); setStatusFilter('all'); setPage(1); }}>Clear filters</button> : null}
+      {!query.isLoading && items.length === 0 && hasFilters ? <button className="btn-secondary" type="button" onClick={() => { setPlanFilter('all'); setStatusFilter('all'); setBillingStatusFilter('all'); setPage(1); }}>Clear filters</button> : null}
       {!query.isLoading && items.length === 0 && !hasFilters ? <EmptyState icon={CreditCard} title="No subscriptions found" /> : null}
       <Pagination page={page} totalPages={query.data?.totalPages ?? 1} onPage={setPage} />
     </>

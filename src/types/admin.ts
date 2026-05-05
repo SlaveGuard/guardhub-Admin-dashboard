@@ -3,7 +3,7 @@ import type { AdminUser } from '../store/adminAuthStore';
 export type PaginatedResult<T> = { items: T[]; total: number; page: number; limit: number; totalPages: number };
 export type AdminAccountsParams = { search?: string; page?: number; limit?: number; verified?: boolean; status?: string };
 export type AdminFamiliesParams = { search?: string; page?: number; limit?: number; packageName?: string };
-export type AdminSubscriptionsParams = { planName?: string; status?: string; page?: number; limit?: number };
+export type AdminSubscriptionsParams = { planName?: string; status?: string; billingStatus?: string; page?: number; limit?: number };
 export type AuditSource = 'parent_action' | 'admin_action';
 export type OversightParams = { familyId?: string; accountId?: string; page?: number; limit?: number; from?: string; to?: string; source?: AuditSource };
 
@@ -86,7 +86,15 @@ export type AuditItem = {
   actorAdmin?: OwnerStub | null;
 };
 
-export type SubscriptionSummary = { id: string; planName: string; status: string; createdAt: string; user: OwnerStub };
+export type SubscriptionSummary = {
+  id: string;
+  planName: string;
+  status: string;
+  createdAt: string;
+  user: OwnerStub;
+  billingStatus?: string | null;
+  currentPeriodEnd?: string | null;
+};
 
 // DB-backed package (Phase 3)
 export type PackageStatus = 'draft' | 'active' | 'grandfathered' | 'retired';
@@ -225,6 +233,13 @@ export interface SubscriptionDetailV3 {
   planName: string;
   status: string;
   createdAt: string;
+  billingStatus?: string | null;
+  currentPeriodStart?: string | null;
+  currentPeriodEnd?: string | null;
+  trialEndsAt?: string | null;
+  cancelAt?: string | null;
+  canceledAt?: string | null;
+  providerLinked?: boolean;
   user: { id: string; email: string; displayName?: string | null; isVerified?: boolean; families: FamilyStub[] };
   quotaOverrides?: QuotaOverride[];
 }
@@ -242,9 +257,75 @@ export type OverviewData = {
   devices: OverviewMetricGroup;
   appInstallations: OverviewMetricGroup;
   subscriptions: { total?: number; byPlan?: OverviewPlanCount[] } | OverviewPlanCount[];
+  billing?: {
+    trialing: number;
+    pastDue: number;
+    canceled: number;
+    providerLinkedCount: number;
+  };
   recentAlerts: AlertItem[] | OverviewRecentAlertSummary;
   recentAdminActions: OverviewRecentAdminAction[];
 };
+
+// Phase 4 - Billing
+
+export interface BillingState {
+  linked: boolean;
+  providerCustomerId?: string | null;
+  providerSubscriptionId?: string | null;
+  billingStatus?: string | null;
+  currentPeriodStart?: string | null;
+  currentPeriodEnd?: string | null;
+  trialStart?: string | null;
+  trialEndsAt?: string | null;
+  cancelAt?: string | null;
+  canceledAt?: string | null;
+  cancelReason?: string | null;
+  localStatus?: string | null;
+  planName?: string | null;
+  message?: string;
+}
+
+export interface BillingInvoice {
+  id: string;
+  number: string | null;
+  status: string;
+  amountDue: number;
+  amountPaid: number;
+  currency: string;
+  periodStart: string | null;
+  periodEnd: string | null;
+  paidAt: string | null;
+  hostedInvoiceUrl: string | null;
+  createdAt: string;
+}
+
+export interface InvoiceListResult {
+  linked: boolean;
+  invoices: BillingInvoice[];
+  hasMore: boolean;
+}
+
+export interface SubscriptionEventItem {
+  id: string;
+  eventType: string;
+  processedAt: string;
+  processingNote: string | null;
+}
+
+export interface ExtendTrialPayload {
+  trialEndsAt: string;
+  reason: string;
+}
+
+export interface EndTrialPayload {
+  reason: string;
+}
+
+export interface TrialActionResult {
+  trialEndsAt: string;
+  message: string;
+}
 
 export type AdminUserSummary = {
   id: string;
