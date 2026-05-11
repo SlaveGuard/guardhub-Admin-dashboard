@@ -107,7 +107,7 @@ export function RemoteLockExclusionsScreen() {
   const columns = useMemo<Column<RemoteLockExclusionPackage>[]>(
     () => [
       { key: 'displayName', label: 'Name', render: (row) => <span className="font-semibold text-slate-100">{row.displayName}</span> },
-      { key: 'packageName', label: 'Package', render: (row) => <span className="font-mono text-slate-300">{row.packageName}</span> },
+      { key: 'packageName', label: 'Package / Pattern', render: (row) => <span className="font-mono text-slate-300">{row.packageName}</span> },
       { key: 'platform', label: 'Platform', render: (row) => <span className="font-mono text-slate-300">{row.platform}</span> },
       { key: 'isActive', label: 'Status', render: (row) => <Badge variant={row.isActive ? 'green' : 'slate'}>{row.isActive ? 'Active' : 'Inactive'}</Badge> },
       { key: 'reason', label: 'Reason', render: (row) => <span className="text-slate-400">{row.reason ?? '-'}</span> },
@@ -183,8 +183,15 @@ export function RemoteLockExclusionsScreen() {
 
           <div className="mt-5 grid gap-4 lg:grid-cols-[1.3fr_1fr_0.6fr_0.5fr]">
             <div>
-              <label className="text-sm font-medium text-slate-300" htmlFor="remote-lock-package-name">Package Name</label>
-              <input className="glass-input mt-2 font-mono" id="remote-lock-package-name" value={form.packageName} onChange={(event) => updateField('packageName', event.target.value.trim())} />
+              <label className="text-sm font-medium text-slate-300" htmlFor="remote-lock-package-name">Package or Prefix Pattern</label>
+              <input
+                className="glass-input mt-2 font-mono"
+                id="remote-lock-package-name"
+                placeholder="com.android.launcher or com.oneplus.*"
+                value={form.packageName}
+                onChange={(event) => updateField('packageName', event.target.value.trim())}
+              />
+              <p className="mt-2 text-xs text-slate-500">Use exact package names or a prefix wildcard ending in .* only.</p>
             </div>
             <div>
               <label className="text-sm font-medium text-slate-300" htmlFor="remote-lock-display-name">Display Name</label>
