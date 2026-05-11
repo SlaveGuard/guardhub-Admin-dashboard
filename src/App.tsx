@@ -16,6 +16,7 @@ import { OverviewScreen } from './screens/admin/OverviewScreen';
 import { PackageDetailScreen } from './screens/admin/PackageDetailScreen';
 import { PackageFormScreen } from './screens/admin/PackageFormScreen';
 import { PackagesScreen } from './screens/admin/PackagesScreen';
+import { RemoteLockExclusionsScreen } from './screens/admin/RemoteLockExclusionsScreen';
 import { SupportScreen } from './screens/admin/SupportScreen';
 import { SubscriptionDetailScreen } from './screens/admin/SubscriptionDetailScreen';
 import { SubscriptionsScreen } from './screens/admin/SubscriptionsScreen';
@@ -52,6 +53,7 @@ export default function App() {
             <Route path="packages/:packageId" element={<PackageDetailScreen />} />
             <Route path="packages/:packageId/edit" element={<PackageFormScreen />} />
             <Route path="packages" element={<PackagesScreen />} />
+            <Route path="remote-lock-exclusions" element={<RemoteLockExclusionsScreen />} />
             <Route path="subscriptions" element={<SubscriptionsScreen />} />
             <Route path="subscriptions/:subscriptionId" element={<SubscriptionDetailScreen />} />
             <Route path="alerts" element={<AlertsScreen />} />

@@ -34,9 +34,9 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'admin:support:read',
   ],
   billing_admin: ['admin:packages:read', 'admin:packages:write', 'admin:subscriptions:read', 'admin:subscriptions:write', 'admin:billing:read', 'admin:billing:write'],
-  operations_admin: ['admin:catalog:read', 'admin:catalog:write', 'admin:flags:read'],
+  operations_admin: ['admin:catalog:read', 'admin:catalog:write', 'admin:flags:read', 'admin:remote-lock-exclusions:read', 'admin:remote-lock-exclusions:write'],
   trust_safety_admin: ['admin:alerts:read', 'admin:alerts:write', 'admin:activity:read'],
-  readonly_auditor: ['admin:accounts:read', 'admin:families:read', 'admin:packages:read', 'admin:subscriptions:read', 'admin:audit:read'],
+  readonly_auditor: ['admin:accounts:read', 'admin:families:read', 'admin:packages:read', 'admin:subscriptions:read', 'admin:audit:read', 'admin:remote-lock-exclusions:read'],
 };
 
 export const useAdminAuthStore = create<AdminAuthState>()(

@@ -343,6 +343,34 @@ export interface AdminMutationResult {
   message: string;
 }
 
+export interface RemoteLockExclusionPackage {
+  id: string;
+  packageName: string;
+  displayName: string;
+  platform: string;
+  reason?: string | null;
+  isActive: boolean;
+  createdByAdminUserId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RemoteLockExclusionCreatePayload {
+  packageName: string;
+  displayName: string;
+  platform?: string;
+  isActive?: boolean;
+  reason: string;
+}
+
+export interface RemoteLockExclusionUpdatePayload {
+  packageName?: string;
+  displayName?: string;
+  platform?: string;
+  isActive?: boolean;
+  reason: string;
+}
+
 export interface AccountAuditItem {
   id: string;
   action: string;

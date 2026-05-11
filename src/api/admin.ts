@@ -41,6 +41,9 @@ import type {
   PairingCodeLookupResult,
   PairingFailureItem,
   QuotaOverride,
+  RemoteLockExclusionCreatePayload,
+  RemoteLockExclusionPackage,
+  RemoteLockExclusionUpdatePayload,
   InvoiceListResult,
   SubscriptionDetailV3,
   SubscriptionEventItem,
@@ -175,6 +178,26 @@ export async function duplicatePackage(packageId: string): Promise<Package> {
 
 export async function getPackageImpactPreview(packageId: string): Promise<ImpactPreview> {
   const { data } = await adminApiClient.get<ImpactPreview>(`/admin/packages/${packageId}/impact-preview`);
+  return data;
+}
+
+export async function listRemoteLockExclusions(): Promise<RemoteLockExclusionPackage[]> {
+  const { data } = await adminApiClient.get<RemoteLockExclusionPackage[]>('/admin/remote-lock-exclusions');
+  return data;
+}
+
+export async function createRemoteLockExclusion(payload: RemoteLockExclusionCreatePayload): Promise<RemoteLockExclusionPackage> {
+  const { data } = await adminApiClient.post<RemoteLockExclusionPackage>('/admin/remote-lock-exclusions', payload);
+  return data;
+}
+
+export async function updateRemoteLockExclusion(exclusionId: string, payload: RemoteLockExclusionUpdatePayload): Promise<RemoteLockExclusionPackage> {
+  const { data } = await adminApiClient.patch<RemoteLockExclusionPackage>(`/admin/remote-lock-exclusions/${exclusionId}`, payload);
+  return data;
+}
+
+export async function deleteRemoteLockExclusion(exclusionId: string, reason: string): Promise<AdminMutationResult> {
+  const { data } = await adminApiClient.delete<AdminMutationResult>(`/admin/remote-lock-exclusions/${exclusionId}`, { data: { reason } });
   return data;
 }
 
